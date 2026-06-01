@@ -53,6 +53,6 @@ if __name__ == '__main__':
     port = 8000
     server_address = ('', port)
     httpd = http.server.HTTPServer(server_address, CustomHandler)
-    print(f"Starting CampusFlow server on http://localhost:{port}")
+    print(f"Starting '時間割' server on http://localhost:{port}")
     print(f"Serving files from: {os.getcwd()}")
     httpd.serve_forever()

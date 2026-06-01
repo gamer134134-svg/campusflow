@@ -1,6 +1,6 @@
 {
-  "name": "CampusFlow",
-  "short_name": "CampusFlow",
+  "name": "時間割",
+  "short_name": "時間割",
   "description": "大学生用の時間割・課題・GPA管理アプリケーション",
   "start_url": "./index.html",
   "display": "standalone",

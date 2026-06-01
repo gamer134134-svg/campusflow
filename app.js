@@ -1581,7 +1581,7 @@ function exportData() {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
     const dlAnchorElem = document.createElement('a');
     dlAnchorElem.setAttribute("href", dataStr);
-    dlAnchorElem.setAttribute("download", `campusflow_backup_${getFormatDateString(0)}.json`);
+    dlAnchorElem.setAttribute("download", `timetable_backup_${getFormatDateString(0)}.json`);
     dlAnchorElem.click();
     showToast("バックアップデータをダウンロードしました");
 }
@@ -2084,7 +2084,7 @@ function toggleSystemNotifications(checked) {
             if (permission === "granted") {
                 localStorage.setItem('cf_notifications_enabled', 'true');
                 showToast("システム通知を有効にしました");
-                new Notification("CampusFlow", {
+                new Notification("時間割", {
                     body: "毎朝8時に時間割と課題の通知をお届けします！",
                     icon: "app_icon.png"
                 });
@@ -2154,7 +2154,7 @@ function sendDailyNotification() {
     }
 
     try {
-        const notification = new Notification("今日の予定 - CampusFlow", {
+        const notification = new Notification("今日の予定 - 時間割", {
             body: bodyText,
             icon: "app_icon.png"
         });
@@ -2220,7 +2220,7 @@ function scheduleAndroidNotifications() {
 
             // Schedule via showNotification with TimestampTrigger
             try {
-                registration.showNotification("今日の予定 - CampusFlow", {
+                registration.showNotification("今日の予定 - 時間割", {
                     body: bodyText,
                     icon: "app_icon.png",
                     tag: 'cf-daily-trigger',
@@ -2272,7 +2272,7 @@ function installPwaApp() {
 }
 
 window.addEventListener('appinstalled', (evt) => {
-    console.log('CampusFlow was installed.');
+    console.log('時間割 was installed.');
     showToast("アプリがホーム画面に追加されました！");
     
     // Disable the button since it is now installed

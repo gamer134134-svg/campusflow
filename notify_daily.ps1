@@ -1,4 +1,4 @@
-﻿# notify_daily.ps1 - Daily notification for CampusFlow
+# notify_daily.ps1 - Daily notification for CampusFlow
 
 # Path to data.json
 $AppDir = "c:\Users\owner\Documents\university-timetable-app"
@@ -65,7 +65,7 @@ if ($Data.tasks) {
 }
 
 # If there is nothing scheduled, we can show a relaxed morning notice or exit. Let's show a light notification!
-$Title = "今日の予定 - CampusFlow"
+$Title = "今日の予定 - 時間割"
 $Body = ""
 
 if ($TodayClasses.Count -gt 0) {
@@ -95,7 +95,7 @@ try {
     $TextNodes.Item(1).AppendChild($Template.CreateTextNode($Body)) | Out-Null
 
     $Notification = [Windows.UI.Notifications.ToastNotification]::new($Template)
-    [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("CampusFlow").Show($Notification)
+    [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("時間割").Show($Notification)
 } catch {
     # Fallback to simple popup if toast notification runtime is unavailable
     $wshell = New-Object -ComObject Wscript.Shell
