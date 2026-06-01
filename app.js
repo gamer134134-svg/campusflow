@@ -831,22 +831,48 @@ function saveClass(event) {
 
     if (editId) {
         // Edit mode
-        const clsIndex = classes.findIndex(c => c.id === editId);
-        if (clsIndex !== -1) {
-            classes[clsIndex] = {
-                ...classes[clsIndex],
-                name, room, teacher, credits, semester, day, period, colorIdx, notes, isIntensive
-            };
+        const originalClass = classes.find(c => c.id === editId);
+        if (originalClass) {
+            // Update common attributes for all matching slots of this course
+            classes.forEach(c => {
+                if (c.name === originalClass.name && c.semester === originalClass.semester) {
+                    c.name = name;
+                    c.credits = credits;
+                    c.colorIdx = colorIdx;
+                    c.notes = notes;
+                    c.teacher = teacher;
+                }
+            });
+            // Update the specific slot being edited with slot-specific fields (like room/day/period)
+            const clsIndex = classes.findIndex(c => c.id === editId);
+            if (clsIndex !== -1) {
+                classes[clsIndex] = {
+                    ...classes[clsIndex],
+                    name, room, teacher, credits, semester, day, period, colorIdx, notes, isIntensive
+                };
+            }
             showToast("講義情報を更新しました");
         }
     } else {
         // Create mode
+        // Check if a course with the same name & semester already exists to sync attendance/grade
+        const existing = classes.find(c => c.name === name && c.semester === semester);
+        
         const newClass = {
             id: 'c_' + Date.now(),
             name, room, teacher, credits, semester, day, period, colorIdx, notes, isIntensive,
-            attendance: { attend: 0, absent: 0, late: 0 },
-            grade: 'none'
+            attendance: existing ? { ...existing.attendance } : { attend: 0, absent: 0, late: 0 },
+            grade: existing ? existing.grade : 'none'
         };
+        
+        // Inherit common attributes from the existing slot
+        if (existing) {
+            newClass.credits = existing.credits;
+            newClass.colorIdx = existing.colorIdx;
+            newClass.notes = existing.notes;
+            newClass.teacher = existing.teacher;
+        }
+        
         classes.push(newClass);
         showToast("講義を新しく登録しました");
     }
@@ -988,19 +1014,20 @@ function renderMiniScheduleGrid(cls) {
 
 function adjustAttendance(type, amount) {
     if (!activeClassDetailId) return;
-    const clsIndex = classes.findIndex(c => c.id === activeClassDetailId);
-    if (clsIndex === -1) return;
+    const cls = classes.find(c => c.id === activeClassDetailId);
+    if (!cls) return;
 
-    const cls = classes[clsIndex];
-    if (!cls.attendance) cls.attendance = { attend: 0, absent: 0, late: 0 };
-
-    cls.attendance[type] = Math.max(0, cls.attendance[type] + amount);
+    // Update all slots sharing the same course name and semester
+    classes.forEach(c => {
+        if (c.name === cls.name && c.semester === cls.semester) {
+            if (!c.attendance) c.attendance = { attend: 0, absent: 0, late: 0 };
+            c.attendance[type] = Math.max(0, c.attendance[type] + amount);
+        }
+    });
     
-    // Save
-    classes[clsIndex] = cls;
     saveToLocalStorage('cf_classes', classes);
 
-    // Refresh Modal details
+    // Refresh Modal details using the active class object (since it was updated by reference)
     document.getElementById(`detail-${type}-count`).textContent = cls.attendance[type];
 
     // Toggle Warning bar
