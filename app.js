@@ -15,7 +15,7 @@
      creditGoal: 124
  };
  
- let currentScreen = 'timetable';
+ let currentScreen = 'home';
  let timetableView = 'week'; // 'week' or 'day'
  let currentDailyTab = 1; // 1: Mon, 2: Tue, ... 6: Sat
  let activeClassDetailId = null;
@@ -236,16 +236,24 @@ document.addEventListener('DOMContentLoaded', () => {
 function updateClock() {
     const now = new Date();
 
-
     // Timetable header date: e.g., "6月1日 (月)"
     const month = now.getMonth() + 1;
     const date = now.getDate();
     const dayIndex = now.getDay(); // 0 is Sun, 1 is Mon...
     const dayName = ["日", "月", "火", "水", "木", "金", "土"][dayIndex];
-    document.getElementById('timetable-header-date').textContent = `時間割 (${month}/${date}・${dayName})`;
+    const headerDate = document.getElementById('timetable-header-date');
+    if (headerDate) {
+        headerDate.textContent = `時間割 (${month}/${date}・${dayName})`;
+    }
 
     // Check and send system push notifications at 8:00 AM
     checkAndSendDailyNotification();
+
+    // Live update for active highlights & Home screen
+    if (currentScreen === 'home') {
+        renderHomeScreen();
+    }
+    updateCurrentClassHighlight();
 }
 
 // Apply Selected Theme to Body
@@ -362,10 +370,24 @@ function switchScreen(screenName) {
     
     // Show active screen
     const activeScreen = document.getElementById(`screen-${screenName}`);
-    activeScreen.classList.add('active');
+    if (activeScreen) {
+        activeScreen.classList.add('active');
+    }
     
+    // Update bottom navigation active class
+    const navItems = document.querySelectorAll('.bottom-nav .nav-item');
+    navItems.forEach(item => {
+        item.classList.remove('active');
+        const onclickAttr = item.getAttribute('onclick');
+        if (onclickAttr && onclickAttr.includes(`'${screenName}'`)) {
+            item.classList.add('active');
+        }
+    });
+
     // Perform screen-specific rendering
-    if (screenName === 'timetable') {
+    if (screenName === 'home') {
+        renderHomeScreen();
+    } else if (screenName === 'timetable') {
         renderTimetable();
     } else if (screenName === 'tasks') {
         renderTasksScreen();
@@ -562,6 +584,7 @@ function renderWeeklyGrid() {
                 
                 const card = document.createElement('div');
                 card.className = `grid-class-card sub-color-${matchedClass.colorIdx}`;
+                card.dataset.classId = matchedClass.id;
                 card.innerHTML = `
                     <div class="grid-class-name">${matchedClass.name}</div>
                     <div class="grid-class-room">${matchedClass.room || ''}</div>
@@ -1327,20 +1350,25 @@ function renderTasksScreen() {
 
         const row = document.createElement('div');
         row.className = `task-item priority-${t.priority}`;
+        row.dataset.id = t.id;
         row.innerHTML = `
-            <div class="task-checkbox-container">
-                <input type="checkbox" class="task-checkbox" onchange="toggleTaskStatus('${t.id}')">
-            </div>
-            <div class="task-body">
-                <span class="task-title">${t.title}</span>
-                <div class="task-details">
-                    <span class="task-subject">${subjectName}</span>
-                    <span class="task-due ${isDanger ? 'danger' : ''}">
-                        <i class="fa-regular fa-clock"></i> ${dueLabel}
-                    </span>
+            <div class="task-swipe-bg swipe-action-complete"><i class="fa-solid fa-check"></i> 完了</div>
+            <div class="task-swipe-bg swipe-action-delete"><i class="fa-solid fa-trash"></i> 削除</div>
+            <div class="task-item-content">
+                <div class="task-checkbox-container">
+                    <input type="checkbox" class="task-checkbox" onchange="toggleTaskStatus('${t.id}')">
                 </div>
+                <div class="task-body" style="pointer-events: none;">
+                    <span class="task-title">${t.title}</span>
+                    <div class="task-details">
+                        <span class="task-subject">${subjectName}</span>
+                        <span class="task-due ${isDanger ? 'danger' : ''}">
+                            <i class="fa-regular fa-clock"></i> ${dueLabel}
+                        </span>
+                    </div>
+                </div>
+                <button class="task-delete-btn" onclick="deleteTask('${t.id}')" style="z-index: 10;"><i class="fa-solid fa-trash"></i></button>
             </div>
-            <button class="task-delete-btn" onclick="deleteTask('${t.id}')"><i class="fa-solid fa-trash"></i></button>
         `;
         activeList.appendChild(row);
     });
@@ -1351,23 +1379,31 @@ function renderTasksScreen() {
 
         const row = document.createElement('div');
         row.className = `task-item completed`;
+        row.dataset.id = t.id;
         row.innerHTML = `
-            <div class="task-checkbox-container">
-                <input type="checkbox" class="task-checkbox" checked onchange="toggleTaskStatus('${t.id}')">
-            </div>
-            <div class="task-body">
-                <span class="task-title">${t.title}</span>
-                <div class="task-details">
-                    <span class="task-subject">${subjectName}</span>
-                    <span class="task-due">
-                        <i class="fa-solid fa-circle-check" style="color: var(--primary);"></i> 完了 (${t.dueDate.replace(/-/g, '/')})
-                    </span>
+            <div class="task-swipe-bg swipe-action-complete" style="background: linear-gradient(90deg, #f59e0b 0%, rgba(245, 158, 11, 0.4) 100%);"><i class="fa-solid fa-rotate-left"></i> 戻す</div>
+            <div class="task-swipe-bg swipe-action-delete"><i class="fa-solid fa-trash"></i> 削除</div>
+            <div class="task-item-content">
+                <div class="task-checkbox-container">
+                    <input type="checkbox" class="task-checkbox" checked onchange="toggleTaskStatus('${t.id}')">
                 </div>
+                <div class="task-body" style="pointer-events: none;">
+                    <span class="task-title">${t.title}</span>
+                    <div class="task-details">
+                        <span class="task-subject">${subjectName}</span>
+                        <span class="task-due">
+                            <i class="fa-solid fa-circle-check" style="color: var(--primary);"></i> 完了 (${t.dueDate.replace(/-/g, '/')})
+                        </span>
+                    </div>
+                </div>
+                <button class="task-delete-btn" onclick="deleteTask('${t.id}')" style="z-index: 10;"><i class="fa-solid fa-trash"></i></button>
             </div>
-            <button class="task-delete-btn" onclick="deleteTask('${t.id}')"><i class="fa-solid fa-trash"></i></button>
         `;
         completedList.appendChild(row);
     });
+
+    // Initialize Touch/Drag swipe actions
+    initSwipeActions();
 
     // Stats updates
     document.getElementById('task-stat-active').textContent = activeCount;
@@ -2249,4 +2285,394 @@ window.addEventListener('appinstalled', (evt) => {
         installRow.style.display = 'none';
     }
 });
+
+// --- DYNAMIC HOME SCREEN & HIGHLIGHT UTILITIES ---
+
+function getCurrentPeriodIndex() {
+    const now = new Date();
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+    for (let i = 1; i <= settings.maxPeriods; i++) {
+        const time = periodTimes[i];
+        if (time) {
+            const [sh, sm] = time.start.split(':').map(Number);
+            const [eh, em] = time.end.split(':').map(Number);
+            const startMinutes = sh * 60 + sm;
+            const endMinutes = eh * 60 + em;
+
+            if (nowMinutes >= startMinutes && nowMinutes <= endMinutes) {
+                return i;
+            }
+        }
+    }
+    return null;
+}
+
+function updateCurrentClassHighlight() {
+    document.querySelectorAll('.grid-class-card').forEach(card => {
+        card.classList.remove('current-class-highlight');
+    });
+
+    if (timetableView !== 'week' || currentScreen !== 'timetable') return;
+
+    const now = new Date();
+    let day = now.getDay();
+    if (day === 0) day = 7;
+
+    const currentPeriod = getCurrentPeriodIndex();
+    if (currentPeriod === null) return;
+
+    const semesterClasses = classes.filter(c => isClassInActiveSemester(c, currentSemesterFilter) && !c.isIntensive);
+    const activeClass = semesterClasses.find(c => c.day === day && c.period === currentPeriod);
+    
+    if (activeClass) {
+        const card = document.querySelector(`.grid-class-card[data-class-id="${activeClass.id}"]`);
+        if (card) {
+            card.classList.add('current-class-highlight');
+        }
+    }
+}
+
+function renderHomeScreen() {
+    const now = new Date();
+    const month = now.getMonth() + 1;
+    const date = now.getDate();
+    const dayNames = ["日", "月", "火", "水", "木", "金", "土"];
+    const dayIndex = now.getDay();
+    const dayName = dayNames[dayIndex];
+    
+    const subtitleDate = document.getElementById('home-subtitle-date');
+    if (subtitleDate) {
+        subtitleDate.textContent = `${month}月${date}日 (${dayName})`;
+    }
+
+    const greetingEl = document.getElementById('home-title-greeting');
+    if (greetingEl) {
+        const userName = profile.name ? `${profile.name}さん` : 'ゲストさん';
+        greetingEl.textContent = `こんにちは、${userName}`;
+    }
+
+    const statusCard = document.getElementById('home-class-status-card');
+    if (statusCard) {
+        statusCard.innerHTML = '';
+
+        let dayOfWeek = now.getDay();
+        if (dayOfWeek === 0) dayOfWeek = 7;
+
+        const todayClasses = classes.filter(c => c.day === dayOfWeek && isClassInActiveSemester(c, currentSemesterFilter) && !c.isIntensive);
+        const currentPeriod = getCurrentPeriodIndex();
+        const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+        let currentClass = null;
+        if (currentPeriod !== null) {
+            currentClass = todayClasses.find(c => c.period === currentPeriod);
+        }
+
+        if (currentClass) {
+            const time = periodTimes[currentClass.period];
+            const [eh, em] = time.end.split(':').map(Number);
+            const endMin = eh * 60 + em;
+            const remainMin = endMin - nowMinutes;
+
+            statusCard.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(6, 182, 212, 0.15) 100%)';
+            statusCard.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+            statusCard.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 0.65rem; font-weight: 800; background: #10b981; color: #fff; padding: 2px 8px; border-radius: 12px;">受講中</span>
+                    <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;">${currentClass.period}限 (${time.start} - ${time.end})</span>
+                </div>
+                <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--text-main); margin: 4px 0;">${currentClass.name}</h3>
+                <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; gap: 12px;">
+                    <span><i class="fa-solid fa-location-dot"></i> ${currentClass.room || '未指定'}</span>
+                    <span><i class="fa-solid fa-user"></i> ${currentClass.teacher || '未指定'}</span>
+                </div>
+                <div style="margin-top: 8px; font-size: 0.75rem; color: #10b981; font-weight: 700;">
+                    授業終了まであと <span style="font-size: 1.1rem;">${remainMin}</span> 分
+                </div>
+            `;
+        } else {
+            let nextClass = null;
+            let minDiff = Infinity;
+
+            todayClasses.forEach(c => {
+                const time = periodTimes[c.period];
+                if (time) {
+                    const [sh, sm] = time.start.split(':').map(Number);
+                    const startMin = sh * 60 + sm;
+                    const diff = startMin - nowMinutes;
+                    if (diff > 0 && diff < minDiff) {
+                        minDiff = diff;
+                        nextClass = c;
+                    }
+                }
+            });
+
+            if (nextClass) {
+                const time = periodTimes[nextClass.period];
+                statusCard.style.background = 'linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(6, 182, 212, 0.1) 100%)';
+                statusCard.style.borderColor = 'var(--border-color)';
+                statusCard.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 0.65rem; font-weight: 800; background: var(--primary); color: #fff; padding: 2px 8px; border-radius: 12px;">次の講義</span>
+                        <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;">${nextClass.period}限 (${time.start} - ${time.end})</span>
+                    </div>
+                    <h3 style="font-size: 1.15rem; font-weight: 800; color: var(--text-main); margin: 4px 0;">${nextClass.name}</h3>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); display: flex; gap: 12px;">
+                        <span><i class="fa-solid fa-location-dot"></i> ${nextClass.room || '未指定'}</span>
+                        <span><i class="fa-solid fa-user"></i> ${nextClass.teacher || '未指定'}</span>
+                    </div>
+                    <div style="margin-top: 8px; font-size: 0.75rem; color: var(--primary); font-weight: 700;">
+                        講義開始まであと <span style="font-size: 1.1rem;">${minDiff}</span> 分
+                    </div>
+                `;
+            } else {
+                statusCard.style.background = 'linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)';
+                statusCard.style.borderColor = 'var(--border-color)';
+                if (dayOfWeek === 7) {
+                    statusCard.innerHTML = `
+                        <div style="text-align: center; padding: 8px 0; color: var(--text-muted);">
+                            <i class="fa-solid fa-mug-hot" style="font-size: 1.5rem; color: var(--primary); margin-bottom: 8px;"></i>
+                            <p style="font-size: 0.8rem; font-weight: 600;">今日は日曜日です。お休みですか？☕</p>
+                        </div>
+                    `;
+                } else if (todayClasses.length === 0) {
+                    statusCard.innerHTML = `
+                        <div style="text-align: center; padding: 8px 0; color: var(--text-muted);">
+                            <i class="fa-solid fa-calendar-check" style="font-size: 1.5rem; color: var(--primary); margin-bottom: 8px;"></i>
+                            <p style="font-size: 0.8rem; font-weight: 600;">本日は登録された授業がありません。</p>
+                        </div>
+                    `;
+                } else {
+                    statusCard.innerHTML = `
+                        <div style="text-align: center; padding: 8px 0; color: var(--text-muted);">
+                            <i class="fa-solid fa-graduation-cap" style="font-size: 1.5rem; color: var(--accent); margin-bottom: 8px;"></i>
+                            <p style="font-size: 0.8rem; font-weight: 600;">今日の講義はすべて終了しました！お疲れ様でした✨</p>
+                        </div>
+                    `;
+                }
+            }
+        }
+    }
+
+    const timeline = document.getElementById('home-today-timeline');
+    if (timeline) {
+        let dayOfWeek = now.getDay();
+        if (dayOfWeek === 0) dayOfWeek = 7;
+        const todayClasses = classes.filter(c => c.day === dayOfWeek && isClassInActiveSemester(c, currentSemesterFilter) && !c.isIntensive);
+        const currentPeriod = getCurrentPeriodIndex();
+
+        if (todayClasses.length === 0) {
+            timeline.innerHTML = '<p style="font-size: 0.75rem; text-align: center; color: var(--text-muted); padding: 8px 0;">予定されている授業はありません</p>';
+        } else {
+            timeline.innerHTML = '';
+            todayClasses.sort((a, b) => a.period - b.period);
+            todayClasses.forEach(c => {
+                const time = periodTimes[c.period] ? `${periodTimes[c.period].start} - ${periodTimes[c.period].end}` : '';
+                const isActive = c.period === currentPeriod;
+                
+                const div = document.createElement('div');
+                div.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 10px; border-radius: 10px; border: 1px solid var(--border-color); cursor: pointer; transition: all 0.2s;';
+                if (isActive) {
+                    div.style.background = 'rgba(16, 185, 129, 0.08)';
+                    div.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+                } else {
+                    div.style.background = 'rgba(255, 255, 255, 0.02)';
+                }
+                
+                div.onclick = () => openClassDetailModal(c.id);
+
+                div.innerHTML = `
+                    <div style="display: flex; flex-direction: column; gap: 2px; max-width: 80%;">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span style="font-size: 0.8rem; font-weight: 800; color: var(--text-main);">${c.name}</span>
+                            ${isActive ? '<span style="font-size: 0.55rem; background: #10b981; color: white; padding: 1px 4px; border-radius: 4px; font-weight: 800;">受講中</span>' : ''}
+                        </div>
+                        <span style="font-size: 0.65rem; color: var(--text-muted);">
+                            <i class="fa-solid fa-location-dot"></i> ${c.room || '未指定'} | <i class="fa-solid fa-user"></i> ${c.teacher || '未指定'}
+                        </span>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: flex-end;">
+                        <span style="font-size: 0.8rem; font-weight: 800; color: var(--primary);">${c.period}限</span>
+                        <span style="font-size: 0.55rem; color: var(--text-muted);">${time}</span>
+                    </div>
+                `;
+                timeline.appendChild(div);
+            });
+        }
+    }
+
+    const urgentTasksList = document.getElementById('home-urgent-tasks');
+    if (urgentTasksList) {
+        urgentTasksList.innerHTML = '';
+        const activeTasks = tasks.filter(t => !t.completed);
+        const urgentTasks = activeTasks.filter(t => {
+            const diffTime = new Date(t.dueDate) - now;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            return diffDays >= 0 && diffDays <= 3;
+        });
+
+        if (urgentTasks.length === 0) {
+            urgentTasksList.innerHTML = `
+                <div class="empty-state" style="padding: 16px 0;">
+                    <i class="fa-solid fa-circle-check" style="font-size: 2rem; color: #10b981;"></i>
+                    <p style="font-size: 0.75rem; margin-top: 6px;">期限の迫った課題はありません</p>
+                </div>
+            `;
+        } else {
+            urgentTasks.forEach(t => {
+                const matchedClass = classes.find(c => c.id === t.classId);
+                const subjectName = matchedClass ? matchedClass.name : '一般/その他';
+                
+                const diffTime = new Date(t.dueDate) - now;
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                let dueLabel = "";
+                if (diffDays === 0) dueLabel = "今日締切";
+                else if (diffDays === 1) dueLabel = "明日締切";
+                else dueLabel = `残り ${diffDays} 日`;
+
+                const div = document.createElement('div');
+                div.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-radius: 12px; background: var(--bg-card); border: 1px solid var(--border-color); border-left: 4px solid #ef4444; margin-bottom: 6px;';
+                div.innerHTML = `
+                    <div style="display: flex; flex-direction: column; gap: 3px; max-width: 75%;">
+                        <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${t.title}</span>
+                        <span style="font-size: 0.65rem; color: var(--primary); font-weight: 700;">${subjectName}</span>
+                    </div>
+                    <span style="font-size: 0.65rem; font-weight: 800; background: #ef4444; color: #fff; padding: 2px 6px; border-radius: 6px;">${dueLabel}</span>
+                `;
+                urgentTasksList.appendChild(div);
+            });
+        }
+    }
+}
+
+// --- TASK LIST SWIPE-TO-ACTION LOGIC (Touch & Mouse Drag Support) ---
+
+function initSwipeActions() {
+    const items = document.querySelectorAll('.task-item');
+    
+    items.forEach(item => {
+        const content = item.querySelector('.task-item-content');
+        const bgComplete = item.querySelector('.swipe-action-complete');
+        const bgDelete = item.querySelector('.swipe-action-delete');
+        if (!content) return;
+
+        let startX = 0;
+        let currentX = 0;
+        let isDragging = false;
+        const taskId = item.dataset.id;
+        const threshold = 100;
+
+        function setPosition(x) {
+            content.style.transform = `translateX(${x}px)`;
+            
+            if (x > 0) {
+                if (bgComplete) bgComplete.style.opacity = Math.min(1, x / threshold).toString();
+                if (bgDelete) bgDelete.style.opacity = '0';
+            } else if (x < 0) {
+                if (bgDelete) bgDelete.style.opacity = Math.min(1, Math.abs(x) / threshold).toString();
+                if (bgComplete) bgComplete.style.opacity = '0';
+            } else {
+                if (bgComplete) bgComplete.style.opacity = '0';
+                if (bgDelete) bgDelete.style.opacity = '0';
+            }
+        }
+
+        // Touch event bindings
+        content.addEventListener('touchstart', (e) => {
+            startX = e.touches[0].clientX;
+            content.style.transition = 'none';
+            if (bgComplete) bgComplete.style.transition = 'none';
+            if (bgDelete) bgDelete.style.transition = 'none';
+            isDragging = true;
+        }, { passive: true });
+
+        content.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            currentX = e.touches[0].clientX - startX;
+            if (Math.abs(currentX) > threshold) {
+                const over = Math.abs(currentX) - threshold;
+                currentX = (currentX > 0 ? 1 : -1) * (threshold + over * 0.4);
+            }
+            setPosition(currentX);
+        }, { passive: true });
+
+        content.addEventListener('touchend', () => {
+            if (!isDragging) return;
+            isDragging = false;
+            
+            content.style.transition = 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)';
+            if (bgComplete) bgComplete.style.transition = 'opacity 0.2s ease';
+            if (bgDelete) bgDelete.style.transition = 'opacity 0.2s ease';
+
+            if (currentX > threshold) {
+                content.style.transform = `translateX(100%)`;
+                if (bgComplete) bgComplete.style.opacity = '1';
+                setTimeout(() => {
+                    toggleTaskStatus(taskId);
+                }, 200);
+            } else if (currentX < -threshold) {
+                content.style.transform = `translateX(-100%)`;
+                if (bgDelete) bgDelete.style.opacity = '1';
+                setTimeout(() => {
+                    deleteTask(taskId);
+                }, 200);
+            } else {
+                setPosition(0);
+            }
+            currentX = 0;
+        });
+
+        // Mouse drag event bindings (for desktop simulators)
+        content.addEventListener('mousedown', (e) => {
+            if (e.target.closest('.task-checkbox') || e.target.closest('.task-delete-btn')) return;
+            
+            startX = e.clientX;
+            content.style.transition = 'none';
+            if (bgComplete) bgComplete.style.transition = 'none';
+            if (bgDelete) bgDelete.style.transition = 'none';
+            isDragging = true;
+            
+            const onMouseMove = (moveEvent) => {
+                if (!isDragging) return;
+                currentX = moveEvent.clientX - startX;
+                if (Math.abs(currentX) > threshold) {
+                    const over = Math.abs(currentX) - threshold;
+                    currentX = (currentX > 0 ? 1 : -1) * (threshold + over * 0.4);
+                }
+                setPosition(currentX);
+            };
+
+            const onMouseUp = () => {
+                if (isDragging) {
+                    isDragging = false;
+                    content.style.transition = 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1)';
+                    if (bgComplete) bgComplete.style.transition = 'opacity 0.2s ease';
+                    if (bgDelete) bgDelete.style.transition = 'opacity 0.2s ease';
+
+                    if (currentX > threshold) {
+                        content.style.transform = `translateX(100%)`;
+                        if (bgComplete) bgComplete.style.opacity = '1';
+                        setTimeout(() => {
+                            toggleTaskStatus(taskId);
+                        }, 200);
+                    } else if (currentX < -threshold) {
+                        content.style.transform = `translateX(-100%)`;
+                        if (bgDelete) bgDelete.style.opacity = '1';
+                        setTimeout(() => {
+                            deleteTask(taskId);
+                        }, 200);
+                    } else {
+                        setPosition(0);
+                    }
+                }
+                currentX = 0;
+                document.removeEventListener('mousemove', onMouseMove);
+                document.removeEventListener('mouseup', onMouseUp);
+            };
+
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+        });
+    });
+}
 
