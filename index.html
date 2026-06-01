@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CampusFlow - 大学生用時間割＆単位管理</title>
+    <!-- Custom Style Sheet -->
+    <link rel="stylesheet" href="style.css">
+    <!-- PWA Settings -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="app_icon.png">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="theme-dark">
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">メッセージ</div>
+
+    <!-- Smartphone Frame Container -->
+    <div class="phone-frame">
+        <div class="phone-container">
+            
+            <!-- Mock Status Bar -->
+            <div class="status-bar">
+                <span id="status-bar-time">12:00</span>
+                <div class="icons">
+                    <i class="fa-solid fa-signal"></i>
+                    <i class="fa-solid fa-wifi"></i>
+                    <i class="fa-solid fa-battery-three-quarters"></i>
+                </div>
+            </div>
+
+            <!-- Main App Content Area -->
+            <div class="app-content" id="app-content">
+
+                <!-- SCREEN: TIMETABLE -->
+                <div id="screen-timetable" class="app-screen active">
+                    <div class="screen-header">
+                        <div>
+                            <span class="screen-subtitle">WEEKLY SCHEDULE</span>
+                            <h2 class="screen-title" id="timetable-header-date">時間割</h2>
+                        </div>
+                    </div>
+
+                    <!-- Semester selector tab bar -->
+                    <div id="timetable-semester-tabs" class="day-selector" style="margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                        <!-- JS will inject semester tabs: 1年春, 1年秋 ... 4年秋 -->
+                    </div>
+
+                    <div class="timetable-toolbar">
+                        <div class="view-toggle">
+                            <button id="toggle-week" class="toggle-btn active" onclick="setTimetableView('week')">週表示</button>
+                            <button id="toggle-day" class="toggle-btn" onclick="setTimetableView('day')">日表示</button>
+                        </div>
+                    </div>
+
+                    <!-- Daily Selector (Hidden in week view) -->
+                    <div id="day-selector-container" class="day-selector" style="display: none;">
+                        <button class="day-tab active" data-day="1" onclick="selectDailyTab(1)">月</button>
+                        <button class="day-tab" data-day="2" onclick="selectDailyTab(2)">火</button>
+                        <button class="day-tab" data-day="3" onclick="selectDailyTab(3)">水</button>
+                        <button class="day-tab" data-day="4" onclick="selectDailyTab(4)">木</button>
+                        <button class="day-tab" data-day="5" onclick="selectDailyTab(5)">金</button>
+                        <button class="day-tab" data-day="6" id="sat-day-tab" onclick="selectDailyTab(6)">土</button>
+                    </div>
+
+                    <!-- Weekly Grid Wrapper -->
+                    <div id="weekly-grid-container" class="grid-container">
+                        <div class="grid-wrapper" id="weekly-grid">
+                            <!-- JS will inject header cells and slots here -->
+                        </div>
+                    </div>
+
+                    <!-- Daily List Wrapper -->
+                    <div id="daily-list-container" class="daily-view" style="display: none;">
+                        <!-- JS will inject daily list items here -->
+                    </div>
+
+                    <!-- Intensive Classes Section -->
+                    <div id="intensive-classes-container" class="glass-card" style="margin-top: 16px; display: none;">
+                        <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">
+                            <i class="fa-solid fa-bolt" style="color: var(--primary); margin-right: 4px;"></i> 集中講義
+                        </div>
+                        <div id="intensive-classes-list" style="display: flex; flex-direction: column; gap: 8px;">
+                            <!-- JS will inject intensive class cards here -->
+                        </div>
+                    </div>
+
+                    <!-- Floating Action Button for Classes -->
+                    <button class="fab" id="fab-add-class" onclick="openAddClassModal()">
+                        <i class="fa-solid fa-plus"></i>
+                    </button>
+                </div>
+
+                <!-- SCREEN: TASKS -->
+                <div id="screen-tasks" class="app-screen">
+                    <div class="screen-header">
+                        <div>
+                            <span class="screen-subtitle">ASSIGNMENTS & TODO</span>
+                            <h2 class="screen-title">課題管理</h2>
+                        </div>
+                    </div>
+
+                    <div class="task-stats-bar">
+                        <div class="task-stat-card">
+                            <span class="num" id="task-stat-active">0</span>
+                            <span class="label">未完了の課題</span>
+                        </div>
+                        <div class="task-stat-card">
+                            <span class="num" id="task-stat-urgent">0</span>
+                            <span class="label">期限間近 (3日以内)</span>
+                        </div>
+                    </div>
+
+                    <div class="section-subtitle-bar">
+                        <h3>進行中の課題</h3>
+                    </div>
+                    <div id="active-tasks-list">
+                        <!-- JS will inject active tasks here -->
+                    </div>
+
+                    <div class="section-subtitle-bar">
+                        <h3>完了した課題</h3>
+                    </div>
+                    <div id="completed-tasks-list">
+                        <!-- JS will inject completed tasks here -->
+                    </div>
+
+                    <!-- Floating Action Button for Tasks -->
+                    <button class="fab" id="fab-add-task" onclick="openAddTaskModal()">
+                        <i class="fa-solid fa-plus"></i>
+                    </button>
+                </div>
+
+                <!-- SCREEN: GPA & GRADES -->
+                <div id="screen-gpa" class="app-screen">
+                    <div class="screen-header">
+                        <div>
+                            <span class="screen-subtitle">ACADEMIC PERFORMANCE</span>
+                            <h2 class="screen-title">成績・GPA</h2>
+                        </div>
+                    </div>
+
+                    <!-- GPA Summary Card -->
+                    <div class="gpa-header-card">
+                        <div class="gpa-stats">
+                            <span class="gpa-label">通算 GPA</span>
+                            <span class="gpa-val" id="gpa-total-value">0.00</span>
+                        </div>
+                        <div class="gpa-chart">
+                            <svg>
+                                <circle class="bg" cx="40" cy="40" r="32"></circle>
+                                <circle class="progress" id="gpa-progress-circle" cx="40" cy="40" r="32" stroke-dasharray="201" stroke-dashoffset="201"></circle>
+                            </svg>
+                            <div class="text-container">
+                                <span class="val" id="gpa-percent-val">0%</span>
+                                <span class="lbl">目標比</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sub stats -->
+                    <div class="gpa-sub-stats">
+                        <div class="gpa-sub-card">
+                            <span class="label">修得単位数</span>
+                            <div id="gpa-credits-earned">0</div>
+                        </div>
+                        <div class="gpa-sub-card">
+                            <span class="label">登録総単位数</span>
+                            <div id="gpa-credits-registered">0</div>
+                        </div>
+                    </div>
+
+                    <div class="section-subtitle-bar">
+                        <h3>学期別成績リスト</h3>
+                    </div>
+                    
+                    <div id="grades-semester-container">
+                        <!-- JS will inject semester groups here -->
+                    </div>
+                </div>
+
+                <!-- SCREEN: SETTINGS -->
+                <div id="screen-settings" class="app-screen">
+                    <div class="screen-header">
+                        <div>
+                            <span class="screen-subtitle">PREFERENCES & PROFILE</span>
+                            <h2 class="screen-title">設定</h2>
+                        </div>
+                    </div>
+
+                    <!-- Profile Section -->
+                    <div class="settings-section-title">プロフィール</div>
+                    <div class="glass-card" style="padding: 14px; margin-bottom: 12px;">
+                        <div class="form-group" style="margin-bottom: 10px;">
+                            <label class="form-label">氏名</label>
+                            <input type="text" id="profile-name" class="form-input" placeholder="学生 太郎" onchange="saveProfile()">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label class="form-label">大学名</label>
+                                <input type="text" id="profile-univ" class="form-input" placeholder="○○大学" onchange="saveProfile()">
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label class="form-label">目標取得単位</label>
+                                <input type="number" id="profile-credit-goal" class="form-input" placeholder="124" value="124" onchange="saveProfile()">
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin-top: 10px; margin-bottom: 0;">
+                            <label class="form-label">現在の学年・学期</label>
+                            <select id="profile-semester" class="form-select" onchange="saveProfile()">
+                                <optgroup label="1年生">
+                                    <option value="1年 1Q">1年 1Q</option>
+                                    <option value="1年 2Q">1年 2Q</option>
+                                    <option value="1年 3Q">1年 3Q</option>
+                                    <option value="1年 4Q">1年 4Q</option>
+                                </optgroup>
+                                <optgroup label="2年生">
+                                    <option value="2年 1Q">2年 1Q</option>
+                                    <option value="2年 2Q">2年 2Q</option>
+                                    <option value="2年 3Q">2年 3Q</option>
+                                    <option value="2年 4Q">2年 4Q</option>
+                                </optgroup>
+                                <optgroup label="3年生">
+                                    <option value="3年 1Q">3年 1Q</option>
+                                    <option value="3年 2Q">3年 2Q</option>
+                                    <option value="3年 3Q">3年 3Q</option>
+                                    <option value="3年 4Q">3年 4Q</option>
+                                </optgroup>
+                                <optgroup label="4年生">
+                                    <option value="4年 1Q">4年 1Q</option>
+                                    <option value="4年 2Q">4年 2Q</option>
+                                    <option value="4年 3Q">4年 3Q</option>
+                                    <option value="4年 4Q">4年 4Q</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Display settings -->
+                    <div class="settings-section-title">表示・カスタマイズ</div>
+                    <div class="setting-row">
+                        <div class="setting-label">
+                            <span>カラーテーマ</span>
+                            <span class="desc">アプリ全体の配色を変更します</span>
+                        </div>
+                        <div class="theme-selector">
+                            <div class="theme-option theme-opt-dark active" onclick="setTheme('dark')"></div>
+                            <div class="theme-option theme-opt-light" onclick="setTheme('light')"></div>
+                            <div class="theme-option theme-opt-sakura" onclick="setTheme('sakura')"></div>
+                            <div class="theme-option theme-opt-ocean" onclick="setTheme('ocean')"></div>
+                        </div>
+                    </div>
+
+                    <div class="setting-row">
+                        <div class="setting-label">
+                            <span>土曜日の表示</span>
+                            <span class="desc">時間割に土曜日を含めます</span>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="setting-show-sat" onchange="toggleSaturdayView()">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-row">
+                        <div class="setting-label">
+                            <span>最大時限数</span>
+                            <span class="desc">1日の最大時限数を設定します</span>
+                        </div>
+                        <select id="setting-max-periods" class="form-select" style="width: 100px; padding: 4px 8px;" onchange="changeMaxPeriods()">
+                            <option value="5">5時限</option>
+                            <option value="6">6時限</option>
+                            <option value="7">7時限</option>
+                            <option value="8">8時限</option>
+                            <option value="9">9時限</option>
+                            <option value="10">10時限</option>
+                            <option value="11" selected>11時限</option>
+                        </select>
+                    </div>
+
+                    <!-- PWA Installation -->
+                    <div class="settings-section-title" id="pwa-install-title" style="display: none;">PWA アプリのインストール</div>
+                    <div class="setting-row" id="pwa-install-row" style="display: none; flex-direction: column; align-items: stretch; gap: 10px;">
+                        <div class="setting-label">
+                            <span>ホーム画面に追加する</span>
+                            <span class="desc">CampusFlowをスマホにインストールし、電波がないオフライン環境や、全画面での快適な操作を可能にします。</span>
+                        </div>
+                        <div class="button-group">
+                            <button class="btn-primary" style="flex: 1; padding: 8px 12px; font-size: 0.75rem;" onclick="installPwaApp()">
+                                <i class="fa-solid fa-mobile-screen-button"></i> アプリをインストール
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- ICS Import -->
+                    <div class="settings-section-title">外部連携</div>
+                    <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 10px;">
+                        <div class="setting-label">
+                            <span>大学時間割ICSのインポート</span>
+                            <span class="desc">大学から配布される時間割カレンダーファイル（.ics）を読み込み、時間割を自動生成します。</span>
+                        </div>
+                        <div class="button-group">
+                            <button class="btn-primary" style="flex: 1; padding: 8px 12px; font-size: 0.75rem;" onclick="triggerIcsImport()">
+                                <i class="fa-solid fa-calendar-plus"></i> ICSファイルを選択
+                            </button>
+                            <input type="file" id="ics-file-input" style="display: none;" accept=".ics" onchange="importIcsFile(event)">
+                        </div>
+                    </div>
+
+                    <!-- Data Backup & Reset -->
+                    <div class="settings-section-title">データ管理</div>
+                    <div class="setting-row" style="flex-direction: column; align-items: stretch; gap: 10px;">
+                        <div class="setting-label">
+                            <span>データのバックアップ・復元</span>
+                            <span class="desc">時間割データの保存と他の端末への移行ができます</span>
+                        </div>
+                        <div class="button-group">
+                            <button class="btn-secondary" style="flex: 1; padding: 8px 12px; font-size: 0.75rem;" onclick="exportData()">
+                                <i class="fa-solid fa-download"></i> エクスポート
+                            </button>
+                            <button class="btn-secondary" style="flex: 1; padding: 8px 12px; font-size: 0.75rem;" onclick="triggerImport()">
+                                <i class="fa-solid fa-upload"></i> インポート
+                            </button>
+                            <input type="file" id="import-file-input" style="display: none;" accept=".json" onchange="importData(event)">
+                        </div>
+                    </div>
+
+                    <div class="setting-row" style="border-color: rgba(239, 68, 68, 0.2);">
+                        <div class="setting-label">
+                            <span>データの初期化</span>
+                            <span class="desc" style="color: #fca5a5;">登録されたすべてのデータが削除されます</span>
+                        </div>
+                        <button class="btn-danger" onclick="resetAppData()">初期化</button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Navigation Bar -->
+            <div class="bottom-nav">
+                <a class="nav-item active" onclick="switchScreen('timetable')">
+                    <i class="fa-solid fa-calendar-days"></i>
+                    <span>時間割</span>
+                </a>
+                <a class="nav-item" onclick="switchScreen('tasks')">
+                    <i class="fa-solid fa-list-check"></i>
+                    <span>課題</span>
+                </a>
+                <a class="nav-item" onclick="switchScreen('gpa')">
+                    <i class="fa-solid fa-graduation-cap"></i>
+                    <span>成績・GPA</span>
+                </a>
+                <a class="nav-item" onclick="switchScreen('settings')">
+                    <i class="fa-solid fa-gear"></i>
+                    <span>設定</span>
+                </a>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- MODAL: ADD / EDIT CLASS -->
+    <div id="modal-add-class" class="modal-overlay" onclick="closeModalOnOverlay(event, 'modal-add-class')">
+        <div class="modal-sheet">
+            <div class="modal-header">
+                <h3 class="modal-title" id="class-modal-title">講義の追加</h3>
+                <button class="modal-close" onclick="closeModal('modal-add-class')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="form-class" onsubmit="saveClass(event)">
+                <input type="hidden" id="class-edit-id">
+                
+                <div class="form-group" style="position: relative;">
+                    <label class="form-label">シラバスから検索（自動入力）</label>
+                    <div class="search-container">
+                        <input type="text" id="class-syllabus-search" class="form-input" placeholder="科目名やコードで検索（例: 線形, MA）" autocomplete="off" oninput="handleSyllabusSearch(this.value)">
+                        <div id="class-search-results" class="search-results-list" style="display: none;"></div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">講義名 <span style="color: #ef4444;">*</span></label>
+                    <input type="text" id="class-name" class="form-input" placeholder="例: 離散数学" required>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">教室</label>
+                        <input type="text" id="class-room" class="form-input" placeholder="例: 4号館302教室">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">担当教員</label>
+                        <input type="text" id="class-teacher" class="form-input" placeholder="例: 山田 教授">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">単位数</label>
+                        <select id="class-credits" class="form-select">
+                            <option value="1">1単位</option>
+                            <option value="2" selected>2単位</option>
+                            <option value="4">4単位</option>
+                            <option value="0">0単位 (他)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">開講学期</label>
+                        <select id="class-semester" class="form-select">
+                            <optgroup label="1年生">
+                                <option value="1年 1Q">1年 1Q</option>
+                                <option value="1年 2Q">1年 2Q</option>
+                                <option value="1年 1-2Q">1年 1-2Q (春学期全体)</option>
+                                <option value="1年 3Q">1年 3Q</option>
+                                <option value="1年 4Q">1年 4Q</option>
+                                <option value="1年 3-4Q">1年 3-4Q (秋学期全体)</option>
+                            </optgroup>
+                            <optgroup label="2年生">
+                                <option value="2年 1Q">2年 1Q</option>
+                                <option value="2年 2Q">2年 2Q</option>
+                                <option value="2年 1-2Q">2年 1-2Q (春学期全体)</option>
+                                <option value="2年 3Q">2年 3Q</option>
+                                <option value="2年 4Q">2年 4Q</option>
+                                <option value="2年 3-4Q">2年 3-4Q (秋学期全体)</option>
+                            </optgroup>
+                            <optgroup label="3年生">
+                                <option value="3年 1Q">3年 1Q</option>
+                                <option value="3年 2Q">3年 2Q</option>
+                                <option value="3年 1-2Q">3年 1-2Q (春学期全体)</option>
+                                <option value="3年 3Q">3年 3Q</option>
+                                <option value="3年 4Q">3年 4Q</option>
+                                <option value="3年 3-4Q">3年 3-4Q (秋学期全体)</option>
+                            </optgroup>
+                            <optgroup label="4年生">
+                                <option value="4年 1Q">4年 1Q</option>
+                                <option value="4年 2Q">4年 2Q</option>
+                                <option value="4年 1-2Q">4年 1-2Q (春学期全体)</option>
+                                <option value="4年 3Q">4年 3Q</option>
+                                <option value="4年 4Q">4年 4Q</option>
+                                <option value="4年 3-4Q">4年 3-4Q (秋学期全体)</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                    <label class="switch">
+                        <input type="checkbox" id="class-is-intensive" onchange="toggleIntensiveFormFields(this.checked)">
+                        <span class="slider"></span>
+                    </label>
+                    <span class="form-label" style="margin-bottom: 0;">集中講義として登録する</span>
+                </div>
+
+                <div id="class-schedule-fields-group">
+                    <div class="form-group">
+                        <label class="form-label">時間帯の選択 <span style="color: #ef4444;">*</span></label>
+                        <div class="form-row" style="grid-template-columns: 1fr 1fr; margin-bottom: 8px;">
+                            <select id="class-day" class="form-select" onchange="updatePeriodSelector()">
+                                <option value="1">月曜日</option>
+                                <option value="2">火曜日</option>
+                                <option value="3">水曜日</option>
+                                <option value="4">木曜日</option>
+                                <option value="5">金曜日</option>
+                                <option value="6" id="class-day-sat-opt">土曜日</option>
+                            </select>
+                            <select id="class-period" class="form-select">
+                                <!-- Filled dynamically by JS based on setting-max-periods -->
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">テーマカラー</label>
+                    <input type="hidden" id="class-color-idx" value="1">
+                    <div class="color-picker" id="class-color-picker">
+                        <!-- Filled by JS -->
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">メモ</label>
+                    <textarea id="class-notes" class="form-textarea" rows="2" placeholder="課題や試験の注意点など"></textarea>
+                </div>
+
+                <div class="button-group">
+                    <button type="button" class="btn-secondary" onclick="closeModal('modal-add-class')" style="flex: 1;">キャンセル</button>
+                    <button type="submit" class="btn-primary" style="flex: 1;" id="class-submit-btn">登録する</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: CLASS DETAIL -->
+    <div id="modal-class-detail" class="modal-overlay" onclick="closeModalOnOverlay(event, 'modal-class-detail')">
+        <div class="modal-sheet">
+            <div class="modal-header">
+                <h3 class="modal-title" id="detail-class-name">講義詳細</h3>
+                <button class="modal-close" onclick="closeModal('modal-class-detail')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <div class="glass-card" style="margin-bottom: 16px;">
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <div style="font-size: 0.8rem; opacity: 0.85;">
+                        <span id="detail-class-day-period" style="font-weight: 700; color: var(--primary);">月曜 2時限</span>
+                        <span style="margin: 0 6px; opacity: 0.4;">|</span>
+                        <span id="detail-class-room"><i class="fa-solid fa-location-dot"></i> 4号館302</span>
+                    </div>
+                    <div style="font-size: 0.8rem; opacity: 0.85;">
+                        <span id="detail-class-teacher"><i class="fa-solid fa-user"></i> 山田 教授</span>
+                        <span style="margin: 0 6px; opacity: 0.4;">|</span>
+                        <span id="detail-class-credits">2単位</span>
+                        <span style="margin: 0 6px; opacity: 0.4;">|</span>
+                        <span id="detail-class-semester">1年春</span>
+                    </div>
+                    <div style="font-size: 0.8rem; opacity: 0.85; display: none;" id="detail-class-syllabus-row">
+                        <i class="fa-solid fa-square-share-nodes" style="color: var(--primary); margin-right: 4px;"></i> <a href="#" id="detail-class-syllabus-link" target="_blank" style="color: var(--primary); text-decoration: underline; font-weight: 700;">シラバス詳細を開く <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 0.7rem; margin-left: 2px;"></i></a>
+                    </div>
+                    <div id="detail-class-notes" style="font-size: 0.75rem; border-top: 1px dashed var(--border-color); padding-top: 8px; margin-top: 4px; white-space: pre-wrap;"></div>
+                </div>
+            </div>
+
+            <!-- Attendance Controls -->
+            <div class="detail-list-title">出欠管理</div>
+            <div class="attendance-grid">
+                <div class="attendance-card">
+                    <span class="title">出席</span>
+                    <span class="count" id="detail-attend-count">0</span>
+                    <div class="ctrls">
+                        <button class="attendance-btn" onclick="adjustAttendance('attend', -1)"><i class="fa-solid fa-minus"></i></button>
+                        <button class="attendance-btn" onclick="adjustAttendance('attend', 1)"><i class="fa-solid fa-plus"></i></button>
+                    </div>
+                </div>
+                <div class="attendance-card">
+                    <span class="title">欠席</span>
+                    <span class="count" id="detail-absent-count" style="color: #ef4444;">0</span>
+                    <div class="ctrls">
+                        <button class="attendance-btn" onclick="adjustAttendance('absent', -1)"><i class="fa-solid fa-minus"></i></button>
+                        <button class="attendance-btn" onclick="adjustAttendance('absent', 1)"><i class="fa-solid fa-plus"></i></button>
+                    </div>
+                </div>
+                <div class="attendance-card">
+                    <span class="title">遅刻</span>
+                    <span class="count" id="detail-late-count" style="color: #f59e0b;">0</span>
+                    <div class="ctrls">
+                        <button class="attendance-btn" onclick="adjustAttendance('late', -1)"><i class="fa-solid fa-minus"></i></button>
+                        <button class="attendance-btn" onclick="adjustAttendance('late', 1)"><i class="fa-solid fa-plus"></i></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Attendance Rate Alert -->
+            <div id="attendance-rate-warning" style="display: none; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 12px; padding: 10px; font-size: 0.75rem; color: #fca3a3; margin-bottom: 16px; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-triangle-exclamation" style="font-size: 1.1rem; color: #ef4444;"></i>
+                <div>
+                    <strong>欠席回数の警告!</strong> 欠席が4回以上になっています。単位落第の恐れがあります。
+                </div>
+            </div>
+
+            <!-- Grade Assignment -->
+            <div class="detail-list-title">成績の登録</div>
+            <div class="glass-card" style="padding: 10px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
+                <span class="form-label" style="margin-bottom: 0;">この講義の成績評定:</span>
+                <select id="detail-grade-select" class="form-select" style="width: 130px; padding: 6px;" onchange="updateClassGrade()">
+                    <option value="none">未受講/未発表</option>
+                    <option value="S">S (秀) [4.0]</option>
+                    <option value="A">A (優) [3.0]</option>
+                    <option value="B">B (良) [2.0]</option>
+                    <option value="C">C (可) [1.0]</option>
+                    <option value="F">F (不可) [0.0]</option>
+                </select>
+            </div>
+
+            <!-- Intensive Lecture Weekly Schedule Grid -->
+            <div id="detail-intensive-schedule-container" class="glass-card" style="margin-bottom: 16px; padding: 10px; display: none;">
+                <div class="detail-list-title" style="margin-bottom: 6px;">
+                    <i class="fa-solid fa-calendar-week" style="color: var(--primary); margin-right: 4px;"></i> 集中講義の週間スケジュール
+                </div>
+                <div id="detail-intensive-schedule-grid" class="mini-grid-container">
+                    <!-- JS will render mini cells here -->
+                </div>
+            </div>
+
+            <!-- Tasks for this class -->
+            <div class="detail-list">
+                <div class="detail-list-title" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>関連する課題</span>
+                    <button class="btn-primary" style="padding: 4px 8px; font-size: 0.65rem; border-radius: 8px; box-shadow: none;" onclick="quickAddTaskFromDetail()">
+                        <i class="fa-solid fa-plus"></i> 課題を追加
+                    </button>
+                </div>
+                <div id="detail-class-tasks-list" style="margin-top: 8px; max-height: 120px; overflow-y: auto;">
+                    <!-- JS will inject linked tasks here -->
+                </div>
+            </div>
+
+            <!-- Action buttons -->
+            <div class="button-group" style="margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+                <button class="btn-danger" style="flex: 1;" onclick="deleteClassConfirm()"><i class="fa-solid fa-trash"></i> 削除</button>
+                <button class="btn-secondary" style="flex: 1;" onclick="editClassFromDetail()"><i class="fa-solid fa-pen-to-square"></i> 編集</button>
+                <button class="btn-primary" style="flex: 1.5;" onclick="closeModal('modal-class-detail')">閉じる</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: ADD TASK -->
+    <div id="modal-add-task" class="modal-overlay" onclick="closeModalOnOverlay(event, 'modal-add-task')">
+        <div class="modal-sheet">
+            <div class="modal-header">
+                <h3 class="modal-title">課題の追加</h3>
+                <button class="modal-close" onclick="closeModal('modal-add-task')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="form-task" onsubmit="saveTask(event)">
+                <div class="form-group">
+                    <label class="form-label">課題名 <span style="color: #ef4444;">*</span></label>
+                    <input type="text" id="task-title" class="form-input" placeholder="例: レポート提出、小テスト勉強" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">対象の講義 <span style="color: #ef4444;">*</span></label>
+                    <select id="task-class-select" class="form-select" required>
+                        <option value="general">一般 / その他</option>
+                        <!-- Filled by JS -->
+                    </select>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">提出期限 <span style="color: #ef4444;">*</span></label>
+                        <input type="date" id="task-due-date" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">優先度</label>
+                        <select id="task-priority" class="form-select">
+                            <option value="low">低 (緑)</option>
+                            <option value="medium" selected>中 (黄)</option>
+                            <option value="high">高 (赤)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">メモ</label>
+                    <textarea id="task-memo" class="form-textarea" rows="2" placeholder="課題の範囲、提出方法など"></textarea>
+                </div>
+
+                <div class="button-group">
+                    <button type="button" class="btn-secondary" onclick="closeModal('modal-add-task')" style="flex: 1;">キャンセル</button>
+                    <button type="submit" class="btn-primary" style="flex: 1;">追加する</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: DAILY SUMMARY POP-OUT -->
+    <div id="modal-daily-summary" class="modal-overlay" onclick="closeModalOnOverlay(event, 'modal-daily-summary')">
+        <div class="modal-sheet" style="max-height: 85vh; display: flex; flex-direction: column;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="daily-summary-title">今日のまとめ</h3>
+                <button class="modal-close" onclick="closeModal('modal-daily-summary')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div style="flex: 1; overflow-y: auto; padding-right: 4px;">
+                <div class="gpa-stats" style="margin-bottom: 16px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                    <span style="font-size: 1.1rem; font-weight: 800; color: var(--primary);" id="daily-summary-welcome">こんにちは、学生さん！</span>
+                    <span style="font-size: 0.75rem; color: var(--text-muted);" id="daily-summary-date">2026年6月1日 (月)</span>
+                </div>
+
+                <!-- Today's Schedule -->
+                <div class="detail-list-title"><i class="fa-solid fa-calendar-day" style="color: var(--primary); margin-right: 4px;"></i> 今日の時間割</div>
+                <div id="daily-summary-classes" style="margin-bottom: 16px;">
+                    <!-- JS will inject today's classes -->
+                </div>
+
+                <!-- Today's Tasks -->
+                <div class="detail-list-title"><i class="fa-solid fa-list-check" style="color: var(--primary); margin-right: 4px;"></i> 今日締め切りの課題</div>
+                <div id="daily-summary-tasks" style="margin-bottom: 16px;">
+                    <!-- JS will inject today's tasks -->
+                </div>
+
+                <!-- Notification Permission Toggle -->
+                <div class="setting-row" style="background: rgba(255, 255, 255, 0.02); border-radius: 12px; padding: 10px; margin-bottom: 10px; border: 1px solid var(--border-color);">
+                    <div class="setting-label">
+                        <span style="font-size: 0.75rem; font-weight: 700;">朝8時のシステム通知</span>
+                        <span class="desc" style="font-size: 0.6rem;">毎朝8時に今日の日程と課題を通知します</span>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="daily-summary-notif-toggle" onchange="toggleSystemNotifications(this.checked)">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+            <div class="button-group" style="margin-top: 14px; border-top: 1px solid var(--border-color); padding-top: 12px;">
+                <button class="btn-primary" style="width: 100%;" onclick="closeModal('modal-daily-summary')">確認しました</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Background Javascript -->
+    <script src="app.js"></script>
+</body>
+</html>
