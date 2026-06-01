@@ -235,9 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // Update status bar clock and timetable header date
 function updateClock() {
     const now = new Date();
-    const hrs = String(now.getHours()).padStart(2, '0');
-    const mins = String(now.getMinutes()).padStart(2, '0');
-    document.getElementById('status-bar-time').textContent = `${hrs}:${mins}`;
+
 
     // Timetable header date: e.g., "6月1日 (月)"
     const month = now.getMonth() + 1;

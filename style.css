@@ -194,31 +194,12 @@ body {
 
 /* --- App Layout Elements --- */
 
-/* Top Status Bar Mock */
-.status-bar {
-    height: 40px;
-    padding: 18px 24px 0 24px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--text-muted);
-    z-index: 999;
-    user-select: none;
-}
-
-.status-bar .icons {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-}
-
 /* Main Content Wrapper */
 .app-content {
     flex: 1;
     overflow-y: auto;
-    padding: 10px 20px 85px 20px; /* space for nav at bottom */
+    padding: 24px 20px 85px 20px; /* space for nav at bottom */
+    padding-top: max(24px, env(safe-area-inset-top)); /* support notch safe areas on real devices */
     position: relative;
 }
 
