@@ -616,7 +616,8 @@ function renderDailyList() {
     
     dayClasses.forEach(c => {
         const time = periodTimes[c.period] ? `${periodTimes[c.period].start} - ${periodTimes[c.period].end}` : '';
-        const classTasksCount = tasks.filter(t => t.classId === c.id && !t.completed).length;
+        const sameNameClassIds = classes.filter(x => x.name === c.name && x.semester === c.semester).map(x => x.id);
+        const classTasksCount = tasks.filter(t => sameNameClassIds.includes(t.classId) && !t.completed).length;
         const totalAbsent = c.attendance ? c.attendance.absent : 0;
         
         const row = document.createElement('div');
@@ -1161,15 +1162,32 @@ function openAddTaskModal(classId = null) {
     const select = document.getElementById('task-class-select');
     select.innerHTML = '<option value="general">一般 / その他</option>';
     
+    // Group classes by name and semester to prevent duplicates in the dropdown
+    const uniqueClasses = [];
+    const seen = new Set();
     classes.forEach(c => {
+        const key = `${c.name}|${c.semester}`;
+        if (!seen.has(key)) {
+            seen.add(key);
+            uniqueClasses.push(c);
+        }
+    });
+
+    uniqueClasses.forEach(c => {
         const opt = document.createElement('option');
         opt.value = c.id;
-        opt.textContent = c.name;
+        opt.textContent = `${c.name}${c.semester ? ` (${c.semester})` : ''}`;
         select.appendChild(opt);
     });
 
     if (classId) {
-        select.value = classId;
+        const selectedClass = classes.find(c => c.id === classId);
+        if (selectedClass) {
+            const representative = uniqueClasses.find(c => c.name === selectedClass.name && c.semester === selectedClass.semester);
+            select.value = representative ? representative.id : 'general';
+        } else {
+            select.value = 'general';
+        }
     } else {
         select.value = 'general';
     }
