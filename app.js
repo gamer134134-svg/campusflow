@@ -2242,18 +2242,22 @@ window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     // Stash the event so it can be triggered later.
     deferredPrompt = e;
-    // Update UI to notify the user they can install the PWA
-    const installTitle = document.getElementById('pwa-install-title');
-    const installRow = document.getElementById('pwa-install-row');
-    if (installTitle && installRow) {
-        installTitle.style.display = 'block';
-        installRow.style.display = 'flex';
+    
+    // Enable/Reset the install button
+    const installBtn = document.getElementById('pwa-install-btn');
+    if (installBtn) {
+        installBtn.disabled = false;
+        installBtn.innerHTML = `<i class="fa-solid fa-mobile-screen-button"></i> アプリをインストール`;
     }
     console.log("PWA is installable. Capture beforeinstallprompt event.");
 });
 
 function installPwaApp() {
-    if (!deferredPrompt) return;
+    if (!deferredPrompt) {
+        // Fallback for browsers or OS (like iOS) where beforeinstallprompt is not supported
+        showToast("ブラウザのメニューから「ホーム画面に追加」または「インストール」を選択してください。");
+        return;
+    }
     // Show the install prompt
     deferredPrompt.prompt();
     // Wait for the user to respond to the prompt
@@ -2264,25 +2268,18 @@ function installPwaApp() {
             console.log('User dismissed the install prompt');
         }
         deferredPrompt = null;
-        // Hide the UI item
-        const installTitle = document.getElementById('pwa-install-title');
-        const installRow = document.getElementById('pwa-install-row');
-        if (installTitle && installRow) {
-            installTitle.style.display = 'none';
-            installRow.style.display = 'none';
-        }
     });
 }
 
 window.addEventListener('appinstalled', (evt) => {
     console.log('CampusFlow was installed.');
     showToast("アプリがホーム画面に追加されました！");
-    // Hide UI
-    const installTitle = document.getElementById('pwa-install-title');
-    const installRow = document.getElementById('pwa-install-row');
-    if (installTitle && installRow) {
-        installTitle.style.display = 'none';
-        installRow.style.display = 'none';
+    
+    // Disable the button since it is now installed
+    const installBtn = document.getElementById('pwa-install-btn');
+    if (installBtn) {
+        installBtn.disabled = true;
+        installBtn.innerHTML = `<i class="fa-solid fa-circle-check"></i> インストール済み`;
     }
 });
 
